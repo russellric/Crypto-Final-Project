@@ -2,14 +2,6 @@ from Crypto.Cipher import AES, PKCS1_OAEP
 from Crypto.PublicKey import RSA
 from Crypto.Random import get_random_bytes
 
-class Sender:
-    
-   from Crypto.PublicKey import RSA
-from Receiver import Receiver
-from Sender import Sender
-from Crypto.Cipher import AES, PKCS1_OAEP
-from Crypto.Random import get_random_bytes
-
 class Main():
 
     #receivers public key:

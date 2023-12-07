@@ -6,19 +6,19 @@ from Crypto.Hash import HMAC, SHA256
 import os
 
 def generate_rsa_key_pair():
-    key = RSA.generate(2048)
-    private_key = key.export_key()
-    public_key = key.publickey().export_key()
-    return private_key, public_key
+        key = RSA.generate(2048)
+        private_key = key.export_key()
+        public_key = key.publickey().export_key()
+        return private_key, public_key
 
 def save_key_to_file(key, filename):
-    with open(filename, 'wb') as file:
-        file.write(key)
+        with open(filename, 'wb') as file:
+                file.write(key)
 
 def load_key_from_file(filename):
-    with open(filename, 'rb') as file:
-        key = file.read()
-    return key
+        with open(filename, 'rb') as file:
+                key = file.read()
+        return key
 
 def encrypt_message(message, aes_key):
         cipher = AES.new(aes_key, AES.MODE_EAX)
@@ -62,34 +62,36 @@ def generate_keys():
     #receivers keys
 
 def sender():
-    # Step 2: Load public key of the receiver
-    public_key_receiver = load_key_from_file('public_key_receiver.pem')
-    private_key_sender = load_key_from_file("private_key_sender.pem")
-    public_key_sender = load_key_from_file("public_key_sender.pem")
+        # Step 2: Load public key of the receiver
+        public_key_receiver = load_key_from_file('public_key_receiver.pem')
+        private_key_sender = load_key_from_file("private_key_sender.pem")
+        public_key_sender = load_key_from_file("public_key_sender.pem")
 
     # Step 3: Generate AES key
-    aes_key = os.urandom(16)  # 128-bit key for AES
+        aes_key = os.urandom(16)  # 128-bit key for AES
 
     # Step 4: Read the message from file
-    with open('message.txt', 'r') as file:
-        message = file.read()
+        with open('message.txt', 'r') as file:
+                message = file.read()
 
     # Step 5: Encrypt the message with AES
-    ciphertext, tag = encrypt_message(message, aes_key)
+        cipher = AES.new(aes_key, AES.MODE_EAX)
+        ciphertext, tag = cipher.encrypt_and_digest(message.encode('utf-8'))
+        
 
     # Step 6: Encrypt the AES key with the receiver's public key
-    rsa_cipher = PKCS1_OAEP.new(RSA.import_key(public_key_receiver))
-    encrypted_aes_key = rsa_cipher.encrypt(aes_key)
+        rsa_cipher = PKCS1_OAEP.new(RSA.import_key(public_key_receiver))
+        encrypted_aes_key = rsa_cipher.encrypt(aes_key)
 
     # Step 7: Generate Message Authentication Code (MAC)
-    signature = sign_message(message, private_key_sender)
+        signature = sign_message(message, private_key_sender)
 
     # Step 8: Write the transmitted data to a file
-    with open('Transmitted_Data', 'wb') as file:
-        file.write(ciphertext)
-        file.write(tag)
-        file.write(encrypted_aes_key)
-        file.write(signature)
+        with open('Transmitted_Data', 'wb') as file:
+                file.write(ciphertext)
+                file.write(tag)
+                file.write(encrypted_aes_key)
+                file.write(signature)
 
 def receiver():
         public_key_receiver = load_key_from_file('public_key_receiver.pem')
@@ -103,7 +105,7 @@ def receiver():
                 signature = file.read(32)
                 
         # Step 3: Decrypt the AES key with the receiver's public key
-        rsa_cipher = PKCS1_OAEP.new(RSA.import_key(public_key_receiver))
+        rsa_cipher = PKCS1_OAEP.new(RSA.import_key(private_key_receiver))
         aes_key = rsa_cipher.decrypt(encrypted_aes_key)
 
         # Step 4: Verify the signature

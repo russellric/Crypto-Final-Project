@@ -3,7 +3,7 @@ from Crypto.PublicKey import RSA
 
 class Receiver:
    
-   
+
     def decrypt_message(encrypted_message, publicKey):        
         
         # Load the encrypted AES key, nonce, tag, and ciphertext
