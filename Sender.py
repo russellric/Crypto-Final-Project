@@ -2,39 +2,69 @@ from Crypto.Cipher import AES, PKCS1_OAEP
 from Crypto.PublicKey import RSA
 from Crypto.Random import get_random_bytes
 
-# Sender's public key
-secret_code = "supersecretspycode"  # RSA key
-sender_key = RSA.generate(2048)
-encrypted_key = sender_key.export_key(passphrase=secret_code, pkcs=8,
-                                      protection="scryptAndAES128-CBC")
-print("Sender's Public Key:", encrypted_key.decode("utf-8"), "\n")
+class Sender:
+    
+   from Crypto.PublicKey import RSA
+from Receiver import Receiver
+from Sender import Sender
+from Crypto.Cipher import AES, PKCS1_OAEP
+from Crypto.Random import get_random_bytes
 
-# Load the message from the file
-file_path = "message.txt"
-with open(file_path, "r") as file:
-    message = file.read()
+class Main():
 
-# Generate AES key and encrypt the message
-AES_key = get_random_bytes(16)
-cipher = AES.new(AES_key, AES.MODE_EAX)
-ciphertext, tag = cipher.encrypt_and_digest(message.encode('utf-8'))
-print("Message (Ciphertext):", ciphertext)
+    #receivers public key:
+    key = RSA.generate(2048)
+    publicKey = key.publickey().export_key()
+    file_out = open("receiver.pem", "wb")
+    file_out.write(publicKey)
+    file_out.close()
 
-# Save the AES key for later decryption
-with open("AES_key.bin", "wb") as aes_key_file:
-    aes_key_file.write(AES_key)
+    AES_key = get_random_bytes(16)
+    cipher = AES.new(AES_key, AES.MODE_EAX)
 
-# Encrypt the AES key with the public RSA key
-recipient_public_key = sender_key.publickey()  # Use the public key here
-cipher_rsa = PKCS1_OAEP.new(recipient_public_key)
-enc_session_key = cipher_rsa.encrypt(AES_key)
-print("Encrypted Session Key:", enc_session_key.hex())
+    # Encrypt the AES key with the public RSA key
+    cipher_rsa = PKCS1_OAEP.new(publicKey)
+    enc_session_key = cipher_rsa.encrypt(AES_key)
+    #print("Encrypted Session Key:", enc_session_key.hex())
 
-with open("encrypted_data.bin", "wb") as encrypted_file:
-    encrypted_file.write(enc_session_key)
-    encrypted_file.write(cipher.nonce)
-    encrypted_file.write(tag)
-    encrypted_file.write(ciphertext)
+    # Load the message from the file
+    file_path = "message.txt"
+    with open(file_path, "r") as file:
+        message = file.read()
 
-# Now you can send 'enc_session_key', 'ciphertext', and 'tag' to the receiver
-# Receiver.global_receive(encrypted_key, enc_session_key, "Its me. proof? I said so")
+    # Generate AES key and encrypt the message
+    cipher_aes = AES.new(AES_key, AES.MODE_EAX)
+    ciphertext, tag = cipher_aes.encrypt_and_digest(message)
+    #print("Message (Ciphertext):", ciphertext)
+
+    
+    with open("encrypted_data.bin", "wb") as encrypted_file:
+        encrypted_file.write(enc_session_key)
+        encrypted_file.write(cipher_aes.nonce)
+        encrypted_file.write(tag)
+        encrypted_file.write(ciphertext)
+    
+# Load the encrypted AES key, nonce, tag, and ciphertext
+    with open("encrypted_data.bin", "rb") as encrypted_file:
+        encrypted_session_key = encrypted_file.read(256)
+        nonce = encrypted_file.read(16)
+        tag = encrypted_file.read(16)
+        ciphertext = encrypted_file.read()
+
+    #print("Encrypted Session Key:", encrypted_session_key.hex())
+    #print("Nonce:", nonce.hex())
+    #print("Tag:", tag.hex())
+
+    # Decrypt the AES key using the private RSA key
+    cipher_rsa = PKCS1_OAEP.new(publicKey)
+    AES_key = cipher_rsa.decrypt(encrypted_session_key)
+
+    #print("Decrypted AES Key:", AES_key.hex())
+
+    # Decrypt the message using the AES key
+    cipher_aes = AES.new(AES_key, AES.MODE_EAX, nonce)
+    decrypted_message = cipher_aes.decrypt_and_verify(ciphertext, tag)
+
+    print("Decrypted Message:\n", decrypted_message.decode('utf-8'))
+
+#return "encrypted_data.bin"
