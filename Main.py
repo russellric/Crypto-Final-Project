@@ -57,28 +57,43 @@ def sender():
         file.write(enc_aes_key)
         file.write(cipher_aes.nonce)
         file.write(tag)
+        file.write(h.digest())
         file.write(ciphertext)
 
     print("Encrypted")
 
 def receiver():
-    file_in = open("Transmitted_Data", "rb")
+        #keys receiver has:
+        private_key = RSA.import_key(load_key_from_file("private_key_receiver.pem"))
+        sender_public_key = RSA.import_key(load_key_from_file("public_key_sender.pem"))
 
-    private_key = RSA.import_key(load_key_from_file("private_key_receiver.pem"))
+        #TODO: GET HMAC FROM
+        #get message from file
+        with open("Transmitted_Data", "rb") as file:
+                enc_aes_key = file.read(256) # Read 256 bytes, the length of an RSA key
+                nonce = file.read(16) # Read 16 bytes, the length of a nonce
+                tag = file.read(16) # Read 16 bytes, the length of a tag
+                signature = file.read(32) # Read 32 bytes, the length of a SHA256 digest
+                ciphertext = file.read() # Read all remaining bytes
 
-    #TODO: GET HMAC FROM FILE
-    enc_aes_key, nonce, tag, ciphertext = \
-    [ file_in.read(x) for x in (private_key.size_in_bytes(), 16, 16, -1) ]
-    file_in.close()
+        # Decrypt the aes key with the private RSA key
+        cipher_rsa = PKCS1_OAEP.new(private_key)
+        aes_key = cipher_rsa.decrypt(enc_aes_key)
 
-    # Decrypt the aes key with the private RSA key
-    cipher_rsa = PKCS1_OAEP.new(private_key)
-    aes_key = cipher_rsa.decrypt(enc_aes_key)
+        # Decrypt the data with the AES aes key
+        cipher_aes = AES.new(aes_key, AES.MODE_EAX, nonce)
+        message = cipher_aes.decrypt_and_verify(ciphertext, tag)
 
-    # Decrypt the data with the AES aes key
-    cipher_aes = AES.new(aes_key, AES.MODE_EAX, nonce)
-    message = cipher_aes.decrypt_and_verify(ciphertext, tag)
-    print(message.decode("utf-8"))
+        #verify the signature
+        h = HMAC.new(aes_key, digestmod=SHA256)
+        h.update(message)
+        try:
+                h.verify(signature)
+                print("The message is authentic")
+        except ValueError:
+                print("the message or key is wrong")
+        
+        print("Message: ", message.decode("utf-8"))
 
 generate_keys()
 sender()
