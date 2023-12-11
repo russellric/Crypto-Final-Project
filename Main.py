@@ -34,16 +34,16 @@ def sender():
         message = file.read()
     data = message
     
-    #sender knows and uses these keys
-    recipient_key = RSA.import_key(load_key_from_file("public_key_receiver.pem"))
+    #sender knows these keys
+    recipient_public_key = RSA.import_key(load_key_from_file("public_key_receiver.pem"))
     private_key_sender = RSA.import_key(load_key_from_file("private_key_sender.pem"))
     aes_key = get_random_bytes(16)
 
     # Encrypt the aes key with the public RSA key
-    cipher_rsa = PKCS1_OAEP.new(recipient_key)
+    cipher_rsa = PKCS1_OAEP.new(recipient_public_key)
     enc_aes_key = cipher_rsa.encrypt(aes_key)
 
-    # Encrypt the data with the AES aes key
+    # Encrypt the data with the AES key
     cipher_aes = AES.new(aes_key, AES.MODE_EAX)
     ciphertext, tag = cipher_aes.encrypt_and_digest(data)
 
@@ -80,12 +80,13 @@ def receiver():
         cipher_rsa = PKCS1_OAEP.new(private_key)
         aes_key = cipher_rsa.decrypt(enc_aes_key)
 
-        # Decrypt the data with the AES aes key
+        # Decrypt the data with the AES key
         cipher_aes = AES.new(aes_key, AES.MODE_EAX, nonce)
         message = cipher_aes.decrypt_and_verify(ciphertext, tag)
 
         #verify the signature
         h = HMAC.new(aes_key, digestmod=SHA256)
+        #h.update(b'this message has been altered ooOooOOoo') #to test an invalid signature
         h.update(message)
         try:
                 h.verify(signature)
